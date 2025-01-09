@@ -51,13 +51,44 @@ public class UserService {
 
     @Transactional
     public User updateUser(String email, String newEmail) {
-        //TODO: provide implementation for updating user
-        return null;
+        Optional<UserEntity> optionalUser = userRepository.findByEmail(email);
+
+        if (optionalUser.isEmpty()) {
+            throw new IllegalArgumentException("User with the provided email does not exist.");
+        }
+
+        UserEntity userEntity = optionalUser.get();
+
+        if (userRepository.findByEmail(newEmail).isPresent()) {
+            throw new IllegalArgumentException("The provided new email is already in use.");
+        }
+
+        userEntity.setEmail(newEmail);
+        UserEntity updatedEntity = userRepository.save(userEntity);
+
+        return userMapper.toUser(updatedEntity);
     }
 
     @Transactional
     public void registerForLecture(String login, LectureRequest lectureRequest) {
-        //TODO: provide implementation for lecture registration
+        UserEntity userEntity = findUser(login);
+
+        LectureEntity lectureEntity = findLecture(lectureRequest.pathNumber(), lectureRequest.lectureNumber());
+
+        if (lectureEntity.getCapacity() <= 0) {
+            throw new IllegalArgumentException("No available seats for the requested lecture.");
+        }
+
+        if (userEntity.getLectures().contains(lectureEntity)) {
+            throw new IllegalArgumentException("User is already registered for this lecture.");
+        }
+
+        lectureEntity.setCapacity(lectureEntity.getCapacity() - 1);
+        userEntity.getLectures().add(lectureEntity);
+        lectureEntity.getUsers().add(userEntity);
+
+        userRepository.save(userEntity);
+        lectureRepository.save(lectureEntity);
     }
 
     @Transactional
